@@ -26,9 +26,10 @@ We ask that any published work that utilizes this package cites:
     title="Block-simultaneous direction method of multipliers: a proximal primal-dual splitting algorithm for nonconvex problems with multiple constraints",
     journal="Optimization and Engineering",
     year="2018",
-    month="Mar",
-    day="20",
-    issn="1573-2924",
+    month="Dec",
+    volume=19,
+    issue=4,
+    pages={871-885},
     doi="10.1007/s11081-018-9380-y",
     url="https://doi.org/10.1007/s11081-018-9380-y"
     archivePrefix="arXiv",
@@ -102,15 +103,18 @@ def prox_gradf_circle(X, step):
 L = 2         # Lipschitz constant of grad f
 step_f = 1./L # maximum step size of smooth function: 1/L
 X0 = np.array([-1,0])
-X = pa.pgm(X0, prox_gradf_circle, step_f)
+# X: updated quantity
+# convergence: if iterate difference are smaller than relative error
+# error: X^{it} - X^{it-1}
+X, convergence, error = pa.pgm(X0, prox_gradf_circle, step_f)
 # or with Nesterov acceleration
-X = pa.apgm(X0, prox_gradf_circle, step_f)  
+X, convergence, error = pa.apgm(X0, prox_gradf_circle, step_f)  
 ```
 
 If the objective function is not smooth, one can use ADMM. This also allows for two functions (the objective and one constraint ) to be satisfied, but it treats them *separately*. Unlike PGM, the constraint is only met at the end of the optimization and only within some error tolerance.
 
 ```python
-X = pa.admm(X, prox_gradf, step_f, prox_circle, e_rel=1e-3, e_abs=1e-3)
+X, convergence, error = pa.admm(X, prox_gradf, step_f, prox_circle, e_rel=1e-3, e_abs=1e-3)
 ```
 
 A fully working example to demonstrate the principle of operations is [examples/parabola.py] that find the minimum of a 2D parabola under hard boundary constraints (on a shifted circle or the intersection of lines).

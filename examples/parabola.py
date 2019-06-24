@@ -3,6 +3,11 @@ from functools import partial
 from proxmin import algorithms as pa
 from proxmin.utils import Traceback
 
+import logging
+logging.basicConfig()
+logger = logging.getLogger('proxmin')
+logger.setLevel(logging.INFO)
+
 # location of true minimum of f
 dx,dy = 1,0.5
 
@@ -132,7 +137,7 @@ def steps_f12(j=None, Xs=None):
     return slack / L
 
 
-def plotResults(tr, label, boundary=None):
+def plotResults(tr, label="", boundary=None):
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
 
@@ -148,7 +153,6 @@ def plotResults(tr, label, boundary=None):
     else:
         traj = np.dstack([tr["X",j] for j in range(tr.N)])[:,0,:]
 
-    #ax.scatter(traj[:,0], traj[:,1], s=4, c=np.arange(1,len(traj)+1), cmap='Blues_r')
     if tr.offset == 0:
         ax.plot(traj[:,0], traj[:,1], 'b.', markersize=4, ls='-')
     else:
@@ -170,7 +174,7 @@ def plotResults(tr, label, boundary=None):
     plt.show()
 
 if __name__ == "__main__":
-    xy = np.array([-1.,-1.])
+    xy0 = np.array([-1.,-1.])
     if len(sys.argv)==2:
         boundary = sys.argv[1]
         if boundary not in ["line", "circle"]:
@@ -187,56 +191,64 @@ if __name__ == "__main__":
 
     # PGM without boundary
     tr = Traceback()
-    x = pa.pgm(xy, prox_gradf, step_f, max_iter=max_iter, relax=1, traceback=tr)
+    xy = xy0.copy()
+    pa.pgm(xy, prox_gradf, step_f, max_iter=max_iter, relax=1, traceback=tr)
     plotResults(tr, "PGM no boundary")
 
     # PGM
     tr = Traceback()
-    x = pa.pgm(xy, prox_gradf_, step_f, max_iter=max_iter, traceback=tr)
+    xy = xy0.copy()
+    pa.pgm(xy, prox_gradf_, step_f, max_iter=max_iter, traceback=tr)
     plotResults(tr, "PGM", boundary=boundary)
 
     # APGM
     tr = Traceback()
-    x = pa.pgm(xy, prox_gradf_, step_f, max_iter=max_iter, accelerated=True,  traceback=tr)
+    xy = xy0.copy()
+    pa.pgm(xy, prox_gradf_, step_f, max_iter=max_iter, accelerated=True,  traceback=tr)
     plotResults(tr, "PGM accelerated", boundary=boundary)
 
     # ADMM
     tr = Traceback()
-    x  = pa.admm(xy, prox_gradf, step_f, prox_g, max_iter=max_iter, traceback=tr)
+    xy = xy0.copy()
+    pa.admm(xy, prox_gradf, step_f, prox_g, max_iter=max_iter, traceback=tr)
     plotResults(tr, "ADMM", boundary=boundary)
 
     # ADMM with direct constraint projection
     prox_g_direct = None
     tr = Traceback()
-    x = pa.admm(xy, prox_gradf_, step_f, prox_g_direct, max_iter=max_iter, traceback=tr)
+    xy = xy0.copy()
+    pa.admm(xy, prox_gradf_, step_f, prox_g_direct, max_iter=max_iter, traceback=tr)
     plotResults(tr, "ADMM direct", boundary=boundary)
 
     # SDMM
     M = 2
     proxs_g = [prox_g] * M # using same constraint several, i.e. M, times
     tr = Traceback()
-    x = pa.sdmm(xy, prox_gradf, step_f, proxs_g, max_iter=max_iter, traceback=tr)
+    xy = xy0.copy()
+    pa.sdmm(xy, prox_gradf, step_f, proxs_g, max_iter=max_iter, traceback=tr)
     plotResults(tr, "SDMM", boundary=boundary)
 
     # Block-SDMM
-    XY = [np.array([xy[0]]), np.array([xy[1]])]
     if boundary == "line":
         N = 2
         M1 = 7
         M2 = 2
         proxs_g = [[prox_xline]*M1, [prox_yline]*M2]
         tr = Traceback(N)
-        x = pa.bsdmm(XY, prox_gradf12, steps_f12, proxs_g, max_iter=max_iter, traceback=tr)
+        XY = [np.array([xy0[0]]), np.array([xy0[1]])]
+        pa.bsdmm(XY, prox_gradf12, steps_f12, proxs_g, max_iter=max_iter, traceback=tr)
         plotResults(tr, "bSDMM", boundary=boundary)
 
         # bSDMM with direct constraint projection
         prox_gradf12_ = partial(prox_gradf_lim12, boundary=boundary)
         prox_g_direct = None
         tr = Traceback(N)
-        x = pa.bsdmm(XY, prox_gradf12_, steps_f12, prox_g_direct, max_iter=max_iter, traceback=tr)
+        XY = [np.array([xy0[0]]), np.array([xy0[1]])]
+        pa.bsdmm(XY, prox_gradf12_, steps_f12, prox_g_direct, max_iter=max_iter, traceback=tr)
         plotResults(tr, "bSDMM direct", boundary=boundary)
 
         # BPGM
         tr = Traceback(N)
-        x = pa.bpgm(XY, prox_gradf12_, steps_f12, max_iter=max_iter, accelerated=True, traceback=tr)
+        XY = [np.array([xy0[0]]), np.array([xy0[1]])]
+        pa.bpgm(XY, prox_gradf12_, steps_f12, max_iter=max_iter, accelerated=True, traceback=tr)
         plotResults(tr, "bPGM", boundary=boundary)
